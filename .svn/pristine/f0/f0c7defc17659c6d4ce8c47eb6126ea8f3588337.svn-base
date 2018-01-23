@@ -1,0 +1,172 @@
+package fr.esigelec.projetSpring.controller;
+
+import java.util.Calendar;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.sun.jmx.snmp.Timestamp;
+
+import fr.esigelec.projetSpring.donnees_de_test.DonneesQuiz;
+import fr.esigelec.projetSpring.model.Choisir;
+import fr.esigelec.projetSpring.model.Personne;
+import fr.esigelec.projetSpring.model.Proposition;
+import fr.esigelec.projetSpring.model.Question;
+import fr.esigelec.projetSpring.model.Quiz;
+import fr.esigelec.projetSpring.model.dao.IChoisirDAO;
+import fr.esigelec.projetSpring.model.dao.IPersonneDAO;
+import fr.esigelec.projetSpring.model.dao.IPropositionDAO;
+import fr.esigelec.projetSpring.model.dao.IQuestionDAO;
+import fr.esigelec.projetSpring.model.dao.IQuizDAO;
+
+@Controller
+public class QuizControllerAndroid {
+
+
+	@Autowired
+	private IQuizDAO quizDAO;
+	@Autowired
+	private IPropositionDAO propositionDAO;
+	@Autowired
+	private IQuestionDAO questionDAO;
+	@Autowired
+	private IPersonneDAO personneDAO;
+	@Autowired
+	private IChoisirDAO choisirDAO;
+	
+	private DonneesQuiz donneesQuiz = new DonneesQuiz();
+	
+	//jouer
+	//resultat
+	//supprimer
+	//editer
+	//(re)Lancer
+
+	@RequestMapping(value = "/jouerQuizAndroid", method = RequestMethod.GET)
+	@ResponseBody
+	public String jouerQuiz(@RequestParam("id") int id) {
+		
+		Quiz quiz = quizDAO.getQuiz(id);
+		//Quiz quiz = donneesQuiz.getQuiz(id);
+		//Proposition proposition = propositionDAO.getProposition();
+		Question question = questionDAO.getQuestion(quiz.getNoQuestionCourante());
+		//Question question = quiz.getQuestions().get(1);
+		
+		JSONObject fulljson = new JSONObject();
+		JSONObject json = new JSONObject();
+		JSONArray array = new JSONArray();
+		
+		
+		json.put("idQuestion",  quiz.getNoQuestionCourante());
+		json.put("dateDebut",  quiz.getDateDebutQuestion().toString());
+		json.put("libelle",  quiz.getLibelle());
+		
+		for(int i=0; i< question.getPropositions().size() ;i++)
+			json.put("proposition"+(i+1),question.getPropositions().get(i).getLibelle());
+		
+		array.add(json);
+		fulljson.put("question", array);
+		
+		System.out.println(fulljson.toJSONString());
+		return fulljson.toJSONString();
+	}
+	/**
+	 * resultat du quiz partie android
+	 * @param id
+	 * @return
+	 */
+	//todo à tester 
+	@RequestMapping(value = "/resultatQuizAndroid", method = RequestMethod.GET)
+	@ResponseBody
+	public String resultatQuiz(@RequestParam("id") int id) {
+		//Quiz quiz = quizDAO.getQuiz(Integer.parseInt(id));
+		
+		//Question question = questionDAO.getQuestion(quiz.getNoQuestionCourante());
+		
+		Quiz quiz = donneesQuiz.getQuiz(id);
+		Question question = quiz.getQuestions().get(1);
+		
+		JSONObject fulljson = new JSONObject();
+		JSONObject json = new JSONObject();
+		JSONArray array = new JSONArray();
+		
+		int bonneReponse = 0;
+		json.put("idQuestion",  quiz.getNoQuestionCourante());
+		json.put("dateDebut",  quiz.getDateDebutQuestion().toString());
+		json.put("libelle",  quiz.getLibelle());
+		
+		//lister les proposition et enregistrement du numero de la bonne reponse
+		for(int i=0; i< question.getPropositions().size() ;i++) {
+			json.put("proposition"+(i+1),question.getPropositions().get(i).getLibelle());
+			if(question.getPropositions().get(i).isBonneReponse())
+				bonneReponse = i+1;
+		}
+		
+		//ajout du numero de la bonne reponse dans le json
+		json.put("bonneReponse", bonneReponse);
+		
+		//insertion des pourcentages des choix de proposition
+		for(int i=0; i< question.getPropositions().size() ;i++) {
+			json.put("p"+(i+1),"0%");
+		}
+		
+		array.add(json);
+		fulljson.put("question", array);
+		
+		return fulljson.toJSONString();
+	}
+	
+	/**
+	 * NON UTILISE POUR LE MOMENT: FONCTION GERE UNIQUEMENT PAR ADMIN PARTIE WEB
+	 * etape suivante
+	 * @param id
+	 * @return
+	 * 
+	 */
+	@RequestMapping(value = "/etapeSuivanteAndroid", method = RequestMethod.GET)
+	@ResponseBody
+	public String etapeSuivante(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quiz.setEtape(quiz.getEtape() + 1);
+		quizDAO.majQuiz(quiz);
+		return " ";
+	}
+	/*
+	@RequestMapping(value = "/questionSuivanteAndroid", method = RequestMethod.GET)
+	public String questionSuivante(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quiz.setNoQuestionCourante(quiz.getNoQuestionCourante() + 1);
+		quizDAO.majQuiz(quiz);
+		return " ";
+	}
+	*/
+	/**
+	 * 
+	 * @param idQuiz
+	 * @param idJoueur
+	 * @param numreponse
+	 * @return
+	 */
+	//todo: 
+	@RequestMapping(value = "/reponseJoueurAndroid", method = RequestMethod.GET)
+	@ResponseBody
+	public String reponseJoueur(@RequestParam("idQUiz") int idQuiz,@RequestParam("idJoueur") int idJoueur,@RequestParam("numReponse") int numreponse) {
+		Calendar cal = Calendar.getInstance();
+		
+		Quiz quiz = quizDAO.getQuiz(idQuiz);
+		Personne personne = personneDAO.getPersonne(idJoueur);
+		//Proposition proposition = 
+		//Choisir choisir = new Choisir(cal.getTime(),personne,quiz,);
+		quizDAO.majQuiz(quiz);
+		
+		return " ";
+	}
+}

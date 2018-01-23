@@ -1,0 +1,38 @@
+package fr.esigelec.projetSpring.model.daoimpl;
+
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import fr.esigelec.projetSpring.model.Ranking;
+import fr.esigelec.projetSpring.model.Stats;
+import fr.esigelec.projetSpring.model.dao.IStatsDAO;
+
+
+@Repository("IStatsDAO") //锟� mettre normalement sur la couche service (mais n'existe pas dans cet exemple)
+@Transactional(propagation = Propagation.SUPPORTS)
+
+public class StatsDAOImpl implements IStatsDAO{
+	
+	@Autowired
+	 private SessionFactory sessionFactory;
+
+	@SuppressWarnings("unchecked")
+	
+	@Transactional
+	public List<Stats> getStatistiquesQuestionCourante(int idQuiz){
+		
+		
+		String hql = "from stats where id_quiz>=:quiz";
+		Query query = sessionFactory.getCurrentSession().createQuery(hql);
+		query.setParameter("quiz",idQuiz);
+		List<Stats> retour = query.list();
+				
+		return retour; 
+	}
+
+
+}

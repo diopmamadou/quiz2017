@@ -1,0 +1,154 @@
+package fr.esigelec.projetSpring.controller;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import fr.esigelec.projetSpring.model.Personne;
+import fr.esigelec.projetSpring.model.Proposition;
+import fr.esigelec.projetSpring.model.Question;
+import fr.esigelec.projetSpring.model.Quiz;
+import fr.esigelec.projetSpring.model.dao.IQuestionDAO;
+import fr.esigelec.projetSpring.model.dao.IQuizDAO;
+import fr.esigelec.projetSpring.model.dao.IRankingDAO;
+import fr.esigelec.projetSpring.model.dao.IStatsDAO;
+
+@Controller
+public class QuizController {
+	
+	@Autowired
+	private IQuizDAO		quizDAO;
+	@Autowired
+	private IQuestionDAO	questionDAO;
+	@Autowired
+	private IRankingDAO		rankingDAO;
+	@Autowired
+	private IStatsDAO		statsDAO;
+
+	/*Nom des variables requises :
+				Personne : personne
+				Liste des quiz : listeQuiz
+
+			Methodes utilisés sur les boutons :
+				lancerQuiz
+				resultatQuiz
+				lancerQuizAdmin
+				editerQuiz
+				supprimerQuiz
+
+				Pour madeleine :
+				creerQuiz
+				*/
+	
+	// Permet � l'utilisateur de rejoindre le quiz
+	// le retour contient la question courante, le quiz courant (�tape,
+	// �tat, n�
+	// question courante...), le classement du joueur, les statistiques
+	@RequestMapping(value = "/jouerQuiz", method = RequestMethod.GET)
+	public String jouerQuiz(@RequestParam("iQuiz") int idQuiz, final ModelMap modelMap, final HttpSession session) {
+		Quiz quiz = quizDAO.getQuiz(idQuiz);
+		Question questionCourante = quiz.getQuestions().get(quiz.getNoQuestionCourante());
+		modelMap.addAttribute("question", questionCourante);
+		modelMap.addAttribute("quiz", quiz);
+		Personne p = (Personne) session.getAttribute("personne");
+		modelMap.addAttribute("classement", rankingDAO.getClassement(idQuiz));
+		modelMap.addAttribute("nombreJoueurs", statsDAO.getStatistiquesQuestionCourante(idQuiz));
+		return "question";
+	}
+
+	@RequestMapping(value = "/supprimerQuiz", method = RequestMethod.GET)
+	public String supprimerQuiz(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quizDAO.supprimerQuiz(quiz);
+		return "redirect:/quiz";
+	}
+
+	// TODO
+	@RequestMapping(value = "/editerQuiz", method = RequestMethod.GET)
+	public String editerQuiz(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		// quizDAO.supprimerQuiz(quiz);
+		return "redirect:/quiz";
+	}
+	
+	@RequestMapping(value = "/creerQuiz", method = RequestMethod.GET)
+	public String creerQuiz(@RequestParam("libelle") String libelle,
+			@RequestParam("idQuestions") List<Integer> idQuestions) {
+		Quiz quiz = new Quiz();
+		quiz.setLibelle(libelle);
+		quiz.setDateDebutQuiz(new Timestamp(System.currentTimeMillis()));
+		quiz.setDateDebutQuestion(new Timestamp(System.currentTimeMillis()));
+		quiz.setEtat(0);
+		quiz.setNoQuestionCourante(1);
+		List<Question> questions = new ArrayList<Question>();
+		for (int i = 0; i < idQuestions.size(); i++) {
+			Question question = new Question();
+			question = questionDAO.getListeQuestion().get(idQuestions.get(i));
+			questions.add(question);
+		}
+		quiz.setQuestions(questions);
+		quiz.setEtape(1);
+		quizDAO.ajouterQuiz(quiz);
+		return "redirect:/quiz";
+	}
+	
+	@RequestMapping(value = "/creerQuestion", method = RequestMethod.GET)
+	public String creerQuestion(@RequestParam("libelle") String libelle,
+			@RequestParam("propositions") List<String> propositionsString,
+			@RequestParam("bonneReponse") int bonneReponse) {
+		Question question = new Question();
+		List<Proposition> propositions = new ArrayList<Proposition>();
+		for (int i = 0; i < propositions.size(); i++) {
+			Proposition proposition = new Proposition();
+			proposition.setLibelle(propositionsString.get(i).toString());
+			if (i + 1 == bonneReponse)
+				proposition.setBonneReponse(true);
+			else
+				proposition.setBonneReponse(false);
+			proposition.setQuestion(question);
+			propositions.add(proposition);
+		}
+		question.setLibelle(libelle);
+		question.setPropositions(propositions);
+		questionDAO.ajouterQuestion(question);
+		return "redirect:/quiz";
+	}
+
+	// Permet � l'animateur de lancer ou relancer le quiz
+	@RequestMapping(value = "/lancerQuiz", method = RequestMethod.GET)
+	public String lancerQuiz(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quiz.setEtat(10); // le quiz est lancé
+		quiz.setEtape(1);
+		// quiz.setDateDebutQuiz(new Timestamp(System.currentTimeMillis()));
+		return "animateur";
+	}
+
+	// Permet � l'animateur de passer � la question suivante
+	@RequestMapping(value = "/questionSuivante", method = RequestMethod.GET)
+	public String questionSuivante(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quiz.setNoQuestionCourante(quiz.getNoQuestionCourante() + 1);
+		quizDAO.updateQuiz(quiz);
+		return "animateur";
+	}
+
+	// Permet � l'animateur de passer � l'�tape suivante
+	@RequestMapping(value = "/etapeSuivante", method = RequestMethod.GET)
+	public String etapeSuivante(@RequestParam("id") int id) {
+		Quiz quiz = quizDAO.getQuiz(id);
+		quiz.setEtape(quiz.getEtape() + 1);
+		quizDAO.updateQuiz(quiz);
+		return "animateur";
+	}
+	
+}
