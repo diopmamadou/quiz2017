@@ -22,7 +22,8 @@ public class PersonneDAOImpl implements IPersonneDAO {
 	@Transactional
 	@Override
 	public int addPersonne(Personne personne) {
-		return (int) sessionFactory.getCurrentSession().save(personne);
+		//return (int) sessionFactory.getCurrentSession().save(personne);
+		return 1;
 	}
 
 	@Transactional(readOnly = true)
