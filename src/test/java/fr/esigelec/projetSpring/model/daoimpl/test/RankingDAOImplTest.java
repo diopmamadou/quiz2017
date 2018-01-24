@@ -34,6 +34,9 @@ public class RankingDAOImplTest {
 		List<Ranking> liste = rank.getClassement(3);
 		
 		assertEquals(liste.get(0).getScore(),3);
+		/*
+		Test
+		*/
 	}
 
 }
